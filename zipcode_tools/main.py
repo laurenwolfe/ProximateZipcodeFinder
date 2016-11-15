@@ -1,6 +1,19 @@
-from find_zipcodes import FindZipcodes
+# from database import *
+from find_zipcodes import *
 
-# zips = FindZipcodes(47.659861, -122.284977, 5)
-zips = FindZipcodes(80.0020969, -39.9981837, 621.371)
+'''
+Creating a new database instance and inserting data, then confirming count.
+'''
+# db = Database("../data/2016_Gaz_zcta_national.txt", "zipcodes.db")
+# db.create_db()
+# db.insert_data()
+# rows = db.run_query("SELECT COUNT(*) FROM zipcodes")
+# print rows
 
-zips.get_bounding_coords()
+
+'''
+To search, here's what you do!
+'''
+zips = FindZipcodes(98105, 4)
+result = zips.get_zipcodes()
+print result
