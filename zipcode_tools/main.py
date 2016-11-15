@@ -9,6 +9,8 @@ from find_zipcodes import *
 # print rows
 
 
-
-"""To search, here's what you do!"""
+"""To search, here's what you do!
+FindZipcodes' constructor takes two arguments: zipcode and distance (in miles).
+Calling get_zipcodes() on the instance will return a list of all matching zipcodes whose centers fall within the region.
+"""
 print FindZipcodes(98107, 3).get_zipcodes()
