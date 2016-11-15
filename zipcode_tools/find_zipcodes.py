@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import math
+import sqlite3
 from calc import *  # conversion/mathematical helper functions
 
 
@@ -26,6 +26,20 @@ class FindZipcodes(object):
 
         self.print_calculations(angular_radius, delta_lon, max_lat,
                                 min_lat, max_lon, min_lon)
+
+
+    def get_zipcodes(self, zipcode, minimum_count):
+        conn = sqlite3.connect('zipcodes.db')
+
+        c = conn.cursor()
+
+        c.execute("SELECT latitude, longitude \
+        FROM zipcodes \
+        WHERE zipcode = " + zipcode)
+
+        conn.close()
+
+
 
     @staticmethod
     def print_calculations(angular_rad, delta_lon, max_lat,
