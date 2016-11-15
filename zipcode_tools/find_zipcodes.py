@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Given a valid zipcode and distance in miles, returns all zipcodes
 within the requested area (based on the zipcode's center point).

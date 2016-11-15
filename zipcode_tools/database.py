@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Creates a database of US zipcodes and their center coordinates.
 Also provides a query runner utility, reducing redundancy. Note that this
