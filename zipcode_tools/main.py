@@ -14,6 +14,6 @@ Creating a new database instance and inserting data, then confirming count.
 '''
 To search, here's what you do!
 '''
-zips = FindZipcodes(98105, 4)
-result = zips.get_zipcodes()
-print result
+print FindZipcodes(98102, 3).get_zipcodes()
+#result = zips.get_zipcodes()
+#print result

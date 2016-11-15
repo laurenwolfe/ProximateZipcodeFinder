@@ -24,11 +24,19 @@ class FindZipcodes(object):
     (latitude, longitude)
     '''
     def get_coordinates(self):
-        query = "SELECT latitude, longitude \
-          FROM zipcodes \
-          WHERE zipcode = " + str(self.zipcode)
-        result = self.db.run_query(query)
-        return result[0]
+        if len(str(self.zipcode)) != 5:
+            print "zipcode must be five digits in length"
+            return
+        if isinstance(self.zipcode, (int, long)):
+            query = "SELECT latitude, longitude \
+              FROM zipcodes \
+              WHERE zipcode = " + str(self.zipcode)
+
+            result = self.db.run_query(query)
+            return result[0]
+        else:
+            print "zipcode is not a valid integer value"
+            return
 
     '''
     Get bounding coordinates; calculates great circle for longitude, providing
@@ -39,19 +47,25 @@ class FindZipcodes(object):
     Returns a list of the bounding coordinates.
     '''
     def get_bounding_coords(self, lat, lon):
-        lat_radians = convert_degs_to_rads(lat)
-        lon_radians = convert_degs_to_rads(lon)
-        km = convert_miles_to_km(self.distance)
+        if isinstance(lat, float) and isinstance(lon, float) and \
+                isinstance(self.distance, (int, long, float)):
+            lat_radians = convert_degs_to_rads(lat)
+            lon_radians = convert_degs_to_rads(lon)
+            km = convert_miles_to_km(self.distance)
 
-        angular_radius = calc_angular_radius(km)
-        delta_lon = calc_delta_longitude(angular_radius, lat_radians)
+            angular_radius = calc_angular_radius(km)
+            delta_lon = calc_delta_longitude(angular_radius, lat_radians)
 
-        min_lat = convert_rads_to_degrees(lat_radians - angular_radius)
-        max_lat = convert_rads_to_degrees(lat_radians + angular_radius)
-        min_lon = convert_rads_to_degrees(lon_radians - delta_lon)
-        max_lon = convert_rads_to_degrees(lon_radians + delta_lon)
+            min_lat = convert_rads_to_degrees(lat_radians - angular_radius)
+            max_lat = convert_rads_to_degrees(lat_radians + angular_radius)
+            min_lon = convert_rads_to_degrees(lon_radians - delta_lon)
+            max_lon = convert_rads_to_degrees(lon_radians + delta_lon)
 
-        return [min_lat, max_lat, min_lon, max_lon]
+            return [min_lat, max_lat, min_lon, max_lon]
+        else:
+            print "Invalid input for either latitude: " + lat + ", longitude: " + lon \
+                  + ", or distance: " + self.distance
+            return
 
     '''
     Based on the bounding coordinates, return a list of zipcodes within the bound.
@@ -60,19 +74,24 @@ class FindZipcodes(object):
         center_coords = self.get_coordinates()
         bounds = self.get_bounding_coords(center_coords[0], center_coords[1])
 
-        query = "SELECT zipcode FROM zipcodes \
-                WHERE latitude >= " + str(bounds[0]) + \
-                " AND latitude <= " + str(bounds[1]) + \
-                " AND longitude >= " + str(bounds[2]) + \
-                " AND longitude <= " + str(bounds[3])
-        result = self.db.run_query(query)
+        if len(bounds) == 4:
+            query = "SELECT zipcode FROM zipcodes \
+                    WHERE latitude >= " + str(bounds[0]) + \
+                    " AND latitude <= " + str(bounds[1]) + \
+                    " AND longitude >= " + str(bounds[2]) + \
+                    " AND longitude <= " + str(bounds[3])
+            result = self.db.run_query(query)
 
-        # The query returns a list of single-entry tuples, this consolidates
-        # them into a list for ease of use.
-        zipcodes = []
-        for row in result:
-            zipcodes.append(row[0])
-        return zipcodes
+            # The query returns a list of single-entry tuples, this consolidates
+            # them into a list for ease of use.
+            zipcodes = []
+            for row in result:
+                zipcodes.append(row[0])
+            return zipcodes
+        else:
+            print "less than four bounds were returned. Total returned: " + len(bounds)
+            return
+
 
     '''
     Print method to verify that calculations output as expected.

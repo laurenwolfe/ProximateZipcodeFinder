@@ -51,13 +51,6 @@ class Database:
             print "Filepath " + self.filepath + " is invalid; insert failed."
 
     '''
-    wipe all rows from the table -- just in case, not currently used
-    '''
-    def clear_data(self):
-        query = "DELETE FROM zipcodes"
-        self.run_query(query)
-
-    '''
     Connects and runs query passed as an argument, returning results, if any,
     as a list of tuples (each representing selected fields for a single row).
     Here's another place with the potential for running out of memory.
