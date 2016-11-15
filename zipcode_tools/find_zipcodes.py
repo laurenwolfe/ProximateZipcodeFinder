@@ -1,108 +1,85 @@
-"""
-Given a valid zipcode and distance in miles, returns all zipcodes
+
+"""Given a valid zipcode and distance in miles, returns all zipcodes
 within the requested area (based on the zipcode's center point).
 """
 
 from calc import *
 from database import *
+from operator import itemgetter
 
 
 class FindZipcodes(object):
     # global database object.
     db = Database("", "zipcodes.db")
 
-    '''
-    zipcode: center point of search region
-    distance: how far, in miles, to search for adjacent zip codes
-    '''
     def __init__(self, zipcode, distance):
+        """zipcode: center point of search region
+        distance: how far, in miles, to search for adjacent zip codes
+        asserts verify that valid inputs are provided for zipcode and distance:
+        non-negative numbers of the appropriate length.
+        """
+        assert isinstance(zipcode, (int, long)) and isinstance(zipcode, (int, long, float))
+        assert zipcode > 0 and distance > 0 and len(str(zipcode)) == 5
+
         self.zipcode = zipcode
         self.distance = distance
 
-    '''
-    Get coordinates for the provided zipcode; returns tuple of the form
-    (latitude, longitude)
-    '''
     def get_coordinates(self):
-        if len(str(self.zipcode)) != 5:
-            print "zipcode must be five digits in length"
-            return
-        if isinstance(self.zipcode, (int, long)):
-            query = "SELECT latitude, longitude \
-              FROM zipcodes \
-              WHERE zipcode = " + str(self.zipcode)
+        """Get coordinates for the provided zipcode; returns tuple of the form
+        (latitude, longitude)
+        """
+        query = "SELECT latitude, longitude FROM zipcodes WHERE zipcode = " + str(self.zipcode)
+        result = self.db.run_query(query)
+        return result[0]
 
-            result = self.db.run_query(query)
-            return result[0]
-        else:
-            print "zipcode is not a valid integer value"
-            return
-
-    '''
-    Get bounding coordinates; calculates great circle for longitude, providing
-    more accurate results than if we were to use the circle of latitude as
-    reference. (Note: this doesn't account for anomalies at the poles or along
-    the 180th meridian. Fine for US Zipcodes, but another application would
-    require an adjustment.
-    Returns a list of the bounding coordinates.
-    '''
     def get_bounding_coords(self, lat, lon):
-        if isinstance(lat, float) and isinstance(lon, float) and \
-                isinstance(self.distance, (int, long, float)):
-            lat_radians = convert_degs_to_rads(lat)
-            lon_radians = convert_degs_to_rads(lon)
-            km = convert_miles_to_km(self.distance)
+        """Get bounding coordinates; calculates great circle for longitude, providing more accurate results
+        than if we were to use the circle of latitude as reference. (Doesn't account for anomalies at the poles or along
+        the 180th meridian--fine for US Zipcodes, but another application might require an adjustment.
+        Returns a list of the bounding coordinates.
+        """
+        assert isinstance(lat, float)
+        assert isinstance(lon, float)
 
-            angular_radius = calc_angular_radius(km)
-            delta_lon = calc_delta_longitude(angular_radius, lat_radians)
+        lat_radians = convert_degs_to_rads(lat)
+        lon_radians = convert_degs_to_rads(lon)
+        km = convert_miles_to_km(self.distance)
 
-            min_lat = convert_rads_to_degrees(lat_radians - angular_radius)
-            max_lat = convert_rads_to_degrees(lat_radians + angular_radius)
-            min_lon = convert_rads_to_degrees(lon_radians - delta_lon)
-            max_lon = convert_rads_to_degrees(lon_radians + delta_lon)
+        angular_radius = calc_angular_radius(km)
+        delta_lon = calc_delta_longitude(angular_radius, lat_radians)
 
-            return [min_lat, max_lat, min_lon, max_lon]
-        else:
-            print "Invalid input for either latitude: " + lat + ", longitude: " + lon \
-                  + ", or distance: " + self.distance
-            return
+        # Convert back into degrees to be used as coordinates
+        min_lat = convert_rads_to_degrees(lat_radians - angular_radius)
+        max_lat = convert_rads_to_degrees(lat_radians + angular_radius)
+        min_lon = convert_rads_to_degrees(lon_radians - delta_lon)
+        max_lon = convert_rads_to_degrees(lon_radians + delta_lon)
 
-    '''
-    Based on the bounding coordinates, return a list of zipcodes within the bound.
-    '''
+        return [min_lat, max_lat, min_lon, max_lon]
+
     def get_zipcodes(self):
+        """Get coordinates for request zipcode, then calculate directional bounds based on distance.
+        Based on the bounding coordinates, return a list of zipcodes within the bound, in order of geodesic distance.
+        """
         center_coords = self.get_coordinates()
-        bounds = self.get_bounding_coords(center_coords[0], center_coords[1])
+        lat = center_coords[0]
+        lon = center_coords[1]
 
-        if len(bounds) == 4:
-            query = "SELECT zipcode FROM zipcodes \
-                    WHERE latitude >= " + str(bounds[0]) + \
-                    " AND latitude <= " + str(bounds[1]) + \
-                    " AND longitude >= " + str(bounds[2]) + \
-                    " AND longitude <= " + str(bounds[3])
-            result = self.db.run_query(query)
+        bounds = self.get_bounding_coords(lat, lon)
 
-            # The query returns a list of single-entry tuples, this consolidates
-            # them into a list for ease of use.
-            zipcodes = []
-            for row in result:
-                zipcodes.append(row[0])
-            return zipcodes
-        else:
-            print "less than four bounds were returned. Total returned: " + len(bounds)
-            return
+        query = "SELECT * FROM zipcodes \
+                WHERE latitude BETWEEN " + str(bounds[0]) + " AND " + str(bounds[1]) + \
+                " AND longitude BETWEEN " + str(bounds[2]) + " AND " + str(bounds[3])
 
+        distances = []
 
-    '''
-    Print method to verify that calculations output as expected.
-    '''
-    @staticmethod
-    def print_calculations(angular_rad, delta_lon, max_lat,
-                           min_lat, max_lon, min_lon):
+        result = self.db.run_query(query)
 
-        print "angular radius: " + str(angular_rad)
-        print "delta longitude: " + str(delta_lon)
-        print "max latitude: " + str(max_lat)
-        print "min latitude: " + str(min_lat)
-        print "max longitude: " + str(max_lon)
-        print "min longitude: " + str(min_lon)
+        # attribute a relative weight distance
+        for row in result:
+            tup = (row[0], (math.fabs(row[1] - lat) + math.fabs(row[2] - lon)))
+            distances.append(tup)
+
+        distances.sort(key=itemgetter(1))
+
+        # Strips out the ranking numbers and just passes back the zipcodes in order of proximity
+        return [tup[0] for tup in distances]
